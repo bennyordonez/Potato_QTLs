@@ -1,0 +1,95 @@
+---
+title: "For_Benny"
+author: "Ruijuan Li"
+date: "11/28/2017"
+output: html_document
+---
+
+### import lib
+```{r}
+library(tidyverse)
+library(qtl)
+```
+
+### load geno data 
+```{r}
+# Maternal 
+load("~/Desktop/Benny/BennyOnlyMactchM.Rdata")  
+BennyOnlyMactchM %>% dim()  # 348 196
+class(BennyOnlyMactchM)
+View(BennyOnlyMactchM)
+
+# format geno data 
+colnames(BennyOnlyMactchM)
+BennyOnlyMactchM.2 <- 
+BennyOnlyMactchM %>% 
+  mutate(id = Locus_ID) %>% 
+  dplyr::select(id, LG, GM_POS, G1:G180) 
+
+write.csv(BennyOnlyMactchM.2, file = "~/Desktop/Benny/BennyOnlyMactchM.2.csv")
+# modify the colname manually 
+
+# paternal
+load("~/Desktop/Benny/BennyOnlyMactchP.Rdata")
+BennyOnlyMactchP %>% dim()  # 317 196
+class(BennyOnlyMactchP)
+
+# format geno data 
+colnames(BennyOnlyMactchP)
+BennyOnlyMactchP.2 <- 
+BennyOnlyMactchP %>% 
+  mutate(id = Locus_ID) %>% 
+  dplyr::select(id, LG, GM_POS, G1:G180) 
+
+write.csv(BennyOnlyMactchP.2, file = "~/Desktop/Benny/BennyOnlyMactchP.2.csv") 
+```
+
+### load pheno data and reformat 
+```{r}
+pheno.Benny <- read.csv("~/Desktop/Benny/Total_phenotypicData-RBs.csv")
+pheno.Benny %>% head()
+
+pheno.Benny$id <- paste("G", pheno.Benny$Individual, sep = "")
+
+pheno.Benny.2 <- 
+pheno.Benny %>% 
+  dplyr::select(-(CIP.NUMBER:Individual)) %>% 
+  t() %>% 
+  as.data.frame()
+
+write.csv(pheno.Benny.2, "~/Desktop/Benny/pheno.Benny.2.csv")
+```
+
+### combine geno and pheno to one file (maybe for later...)
+```{r}
+test3 <- read.csv("~/Desktop/Benny/data/pheno.Benny.2.csv")
+dim(test3) 
+```
+
+# start mapping 
+```{r}
+LG.Benny.M <- read.cross(format = "csvsr", dir = "~/Desktop/Benny/data", genfile = "BennyOnlyMactchM.2.csv", phefile = "pheno.Benny.2.csv", genotypes = c("ll", "lm"), na.strings = c("--"), BC.gen = 1) # first try to use just one map, for test purpose  
+
+LG.Benny.M <- jittermap(LG.Benny.M) 
+LG.Benny.M$pheno %>% dim() # 184 13 
+
+# takes about a minute to estimate the map
+summary(LG.Benny.M) 
+summaryMap(LG.Benny.M)
+plotMap(LG.Benny.M) 
+plot.rf(LG.Benny.M) 
+
+# female version 
+LG.Benny.P <- read.cross(format = "csvsr", dir = "~/Desktop/Benny/data", genfile = "BennyOnlyMactchP.2.csv", phefile = "pheno.Benny.2.csv", genotypes = c("nn", "np"), na.strings = c("--"), BC.gen = 1) # first try to use just one map, for test purpose  
+
+LG.Benny.P <- jittermap(LG.Benny.P) 
+LG.Benny.P$pheno %>% dim() # 184 13 
+LG.Benny.P$geno$`13`$data %>% dim() # 50 markers 
+
+# takes about a minute to estimate the map
+summary(LG.Benny.P) 
+summaryMap(LG.Benny.P) 
+plotMap(LG.Benny.P) 
+plot.rf(LG.Benny.P)     
+```
+
