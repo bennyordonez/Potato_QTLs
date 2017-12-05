@@ -332,11 +332,11 @@ perm95.LG.Benny.P <- summary(scanone.perm.LG.Benny.P)
   #advantage of "imp" is better for missing genotype data
   #disadvantage is that it is slower.
 scanone.imp.LG.Benny.M <- scanone(LG.Benny.M, pheno.col=1:12, method="imp")
-plot(scanone.imp.LG.Benny.M[,c(1,2,14)], bandcol="gray90")
-abline(h=perm95.LG.Benny.M[1,1],lty=2:6)
+plot(scanone.imp.LG.Benny.M[,c(1,2,14)], bandcol="gray90", main="Scanone.imp.LG.Benny Maternal")
+abline(h=perm95.LG.Benny.M[1,1],lty=2:6) #add permutation threshold
 
 scanone.imp.LG.Benny.P <- scanone(LG.Benny.P, pheno.col=1:12, method="imp")
-plot(scanone.imp.LG.Benny.P[,c(1,2,14)], bandcol="gray90")
+plot(scanone.imp.LG.Benny.P[,c(1,2,14)], bandcol="gray90", main="Scanone.imp.LG.Benny Paternal")
 abline(h=perm95.LG.Benny.P[1,1],lty=2:6) #add permutation threshold
 
 ```
@@ -348,19 +348,186 @@ library(qtl)
 library(tidyverse)
 
 #cim
-cim.LG.Benny.M <- cim(LG.Benny.M,n.marcovar=3, method="imp")
-cim.LG.Benny.P <- cim(LG.Benny.P,n.marcovar=3, method="imp")
+#First assign according the data 
+colnames(LG.Benny.M$pheno)
 
-#summary
-summary(cim.LG.Benny.M)
-summary(cim.LG.Benny.P)
+cim.LG.Benny.M <- 
+lapply(seq_along(1: ncol(LG.Benny.M$pheno)), function(trait) {
+  print(trait)
+  LG.Benny.M$pheno <- as.data.frame(LG.Benny.M$pheno[,trait])
+  cim(LG.Benny.M, n.marcovar=5,method="imp")
+}) 
 
-#check the maximun LOD score
-max(cim.LG.Benny.M)
-max(cim.LG.Benny.P) #on Nov30, chr8 LOD 3.08, see graph#
+colnames(LG.Benny.P$pheno)
+cim.LG.Benny.P <- 
+lapply(seq_along(1: ncol(LG.Benny.P$pheno)), function(trait) {
+  print(trait)
+  LG.Benny.P$pheno <- as.data.frame(LG.Benny.P$pheno[,trait])
+  cim(LG.Benny.P, n.marcovar=5,method="imp")
+}) 
 
-plot(cim.LG.Benny.P, bandcol="gray90", col="blue",lty=2,lwd=2)
 
+#the n.marcovar= argument defines the maximum number of marker covariates to use.
+
+cim.LG.Benny.M.20 <- lapply(seq_along(1: ncol(LG.Benny.M$pheno)), function(trait) {
+  print(trait)
+  LG.Benny.M$pheno <- as.data.frame(LG.Benny.M$pheno[,trait])
+  cim(LG.Benny.M,n.marcovar=5,window=20,method="imp", error.prob = 0.001)
+}) 
+
+cim.LG.Benny.M.40 <- lapply(seq_along(1: ncol(LG.Benny.M$pheno)), function(trait) {
+  print(trait)
+  LG.Benny.M$pheno <- as.data.frame(LG.Benny.M$pheno[,trait])
+  cim(LG.Benny.M,n.marcovar=5,window=40,method="imp", error.prob = 0.001)
+}) 
+
+cim.LG.Benny.M.Inf <- lapply(seq_along(1: ncol(LG.Benny.M$pheno)), function(trait) {
+  print(trait)
+  LG.Benny.M$pheno <- as.data.frame(LG.Benny.M$pheno[,trait])
+  cim(LG.Benny.M,n.marcovar=5,window=Inf,method="imp", error.prob = 0.001)
+}) 
+
+cim.LG.Benny.P.20 <- 
+lapply(seq_along(1: ncol(LG.Benny.P$pheno)), function(trait) {
+  print(trait)
+  LG.Benny.P$pheno <- as.data.frame(LG.Benny.P$pheno[,trait])
+  cim(LG.Benny.P,n.marcovar=5,window=20,method="imp", error.prob = 0.001)
+}) 
+
+cim.LG.Benny.P.40 <- 
+lapply(seq_along(1: ncol(LG.Benny.P$pheno)), function(trait) {
+  print(trait)
+  LG.Benny.P$pheno <- as.data.frame(LG.Benny.P$pheno[,trait])
+  cim(LG.Benny.P,n.marcovar=5,window=40,method="imp", error.prob = 0.001)
+}) 
+
+cim.LG.Benny.P.Inf <- 
+lapply(seq_along(1: ncol(LG.Benny.P$pheno)), function(trait) {
+  print(trait)
+  LG.Benny.P$pheno <- as.data.frame(LG.Benny.P$pheno[,trait])
+  cim(LG.Benny.P,n.marcovar=5,window=Inf,method="imp", error.prob = 0.001)
+}) 
+
+
+#Summary of cim
+summary(cim.LG.Benny.M[[1]])
+summary(cim.LG.Benny.P[[1]])
+
+#Check the maximun LOD score
+max(cim.LG.Benny.M[[1]][,3]) #2.30
+max(cim.LG.Benny.P[[1]][,3]) #2.66
+
+max(cim.LG.Benny.M.20[[1]][,3]) #1.86
+max(cim.LG.Benny.P.20[[1]][,3]) #2.25
+max(cim.LG.Benny.M.40[[1]][,3]) #1.94
+max(cim.LG.Benny.P.40[[1]][,3]) #3.14
+max(cim.LG.Benny.M.Inf[[1]][,3]) #1.79
+max(cim.LG.Benny.P.Inf[[1]][,3]) #1.86
+
+
+##Plot out cim results
+plot(cim.LG.Benny.P[[1]], ylab="LOD score", col = "blue", main="cim LG. Paternal Map")
+abline(h=max(cim.LG.Benny.P[[1]][,3]),lty=2:6) #add permutation threshold
+
+plot(cim.LG.Benny.M[[1]], ylab="LOD score", col = "blue", main="cim LG. Maternal Map") 
+abline(h=max(cim.LG.Benny.M[[1]][,3]),lty=2) #add permutation threshold
+
+
+##Plot out Paternal Map results with every window, along with the LOD scores obtained by cim
+par(mfrow=c(3,1))
+plot(cim.LG.Benny.P[[1]],cim.LG.Benny.P.20[[1]], ylab="LOD score", col= c("green","blue"), main="Paternal Map, window = 20 cM")
+add.cim.covar(cim.LG.Benny.P.20[[1]], chr =chr, col="red")
+abline(h=max(cim.LG.Benny.P[[1]][,3]),lty=2:6)
+plot(cim.LG.Benny.P[[1]],cim.LG.Benny.P.40[[1]], ylab="LOD score", col= c("green","blue"), main="Paternal Map, window = 40 cM")
+add.cim.covar(cim.LG.Benny.P.40[[1]], chr =chr, col="red")
+abline(h=max(cim.LG.Benny.P[[1]][,3]),lty=2:6)
+plot(cim.LG.Benny.P[[1]],cim.LG.Benny.P.Inf[[1]], ylab="LOD score", col= c("green","blue"), main="Paternal Map, window = Inf cM")
+add.cim.covar(cim.LG.Benny.P.Inf[[1]], col="red")
+abline(h=max(cim.LG.Benny.P[[1]][,3]),lty=2:6)
+dev.off()
+
+##Plot out Maternal Map results with every window, along with the LOD scores obtained by cim
+par(mfrow=c(3,1))
+plot(cim.LG.Benny.M[[1]],cim.LG.Benny.M.20[[1]], ylab="LOD score", col= c("green","blue"), main="Maternal Map, window = 20 cM")
+add.cim.covar(cim.LG.Benny.M.20[[1]], col="red")
+abline(h=max(cim.LG.Benny.M[[1]][,3]),lty=2:6)
+plot(cim.LG.Benny.M[[1]],cim.LG.Benny.M.40[[1]], ylab="LOD score", col= c("green","blue"), main="Maternal Map, window = 40 cM")
+add.cim.covar(cim.LG.Benny.M.40[[1]], col="red")
+abline(h=max(cim.LG.Benny.M[[1]][,3]),lty=2:6)
+plot(cim.LG.Benny.M[[1]],cim.LG.Benny.M.Inf[[1]], ylab="LOD score", col= c("green","blue"), main="Maternal Map, window = Inf cM")
+add.cim.covar(cim.LG.Benny.M.Inf[[1]], col="red")
+abline(h=max(cim.LG.Benny.M[[1]][,3]),lty=2:6)
+dev.off()
+
+#Run cim n.permutations = 1000. Run for each trait
+
+cim.perm.LG.Benny.P <- cim(LG.Benny.P,n.marcovar=5,method="imp",n.perm=1000)
+cim.perm.LG.Benny.M <- cim(LG.Benny.M,n.marcovar=5,method="imp",n.perm=1000)
+#will take time ~10 min each. 
+
+#Summary, shows the 90th and 95th percentile of LOD scores in randomized data
+summary(cim.perm.LG.Benny.P) #5%: 3.96; 10% 3.47
+summary(cim.perm.LG.Benny.M) #5%: 3.85; 10% 3.50
+
+#Keep the 95th percentile for future use. This corresponds to p <0.05
+cim.perm95.LG.Benny.P <- summary(cim.perm.LG.Benny.P)[1] #3.95
+cim.perm95.LG.Benny.M <- summary(cim.perm.LG.Benny.M)[1] #3.85
+
+#Plot out results
+plot(cim.LG.Benny.P[[1]],ylab="LOD score", main="cim.perm.LG.Paternal Map")
+abline(h=cim.perm95.LG.Benny.P,lty=2:6) #add permutation threshold 
+
+plot(cim.LG.Benny.M[[1]],ylab="LOD score", main="cim.perm. LG.Maternal Map")
+abline(h=cim.perm95.LG.Benny.M,lty=2:6) #add permutation threshold 
+
+
+##A 2D scan
+#The above methods only evaluate the evidence for a QTL one location a time. 
+#It is possible to instead scan two locations at once. 
+#This can be particularly advantageous in identifying QTL if there is epistasis.
+
+#scantwo.imp.LG.Benny.P <- scantwo(LG.Benny.P,method="imp",verbose=T) 
+#scantwo.imp.LG.Benny.M <- scantwo(LG.Benny.M,method="imp",verbose=T) 
+#takes 4 minutes each
+
+#Let's see the graphic to have an idea 
+#plot(scantwo.imp.LG.Benny.M, chr = 1:12, main = "LG.Maternal Map")
+#plot(scantwo.imp.LG.Benny.P, chr = 1:12, main = "LG.Paternal Map")
+
+#permutations take a long time, about 2 hours for 1000? 
+#scantwo.imp.perm.LG.Benny.P <- scantwo(LG.Benny.P,method="imp",verbose=T,n.perm=1000) 
+#save(scantwo.imp.perm.LG.Benny.P,file = "~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/scantwo.imp.perm.LG.Benny.P.Rdata")
+
+#scantwo.imp.perm.LG.Benny.M <- scantwo(LG.Benny.M,method="imp",verbose=T,n.perm=1000) 
+#save(scantwo.imp.perm.LG.Benny.M, file = "~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/scantwo.imp.perm.LG.Benny.M.Rdata")
+
+#load the pre-run permutations
+#load("scantwo.imp.perm.LG.Benny.P.Rdata")
+#load("scantwo.imp.perm.LG.Benny.M.Rdata")
+
+#summary(scantwo.imp.perm.LG.Benny.P)
+#summary(scantwo.imp.perm.LG.Benny.M)
+
+#plot(scantwo.imp.perm.LG.Benny.M)
+#plot(scantwo.imp.perm.LG.Benny.P)
+
+#There are many different models being considered in the 2D models.  
+#The LOD scores reflect the following comparisons
+#columns:
+  #full 2 QTL w/ interaction vs. null model
+  #fv1 2 QTL w/ interaction vs 1 QTL
+  #int 2 QTL w/interaction vs 2 QTL additive. (test for interaction)
+  #add 2 QTL additive vs null model
+  #av1 2 QTL additive vs 1 QTL (test for 2nd QTL if additive)
+  #one 1 QTL model vs null
+
+#summary(scantwo.imp.LG.Benny.M,perm.M=scantwo.imp.perm.LG.Benny.M,pvalues=T)
+
+#plot(scantwo.imp.LG.Benny.M,zscale=T) 
+      #upper compares model for 2 QTL with interaction to 2 QTL additive
+          #(evidence for interaction); corresponds to "int" above
+      #lower compares 2 QTL interaction with no QTL 
+          #(evidence for QTL); corresponds to "full" above
 
 ```
 
