@@ -1,0 +1,88 @@
+---
+title: "map_construction"
+author: "Ruijuan Li"
+date: "11/30/2017"
+output: html_document
+---
+
+Purpose of this script is to re-build the genetic map using the genotype data from 180 individuals. We have two maps, maternal and paternal map, for maternal map based genotype data, there are 344 markers, for paternal map based genotype data, there are 426 markers. 
+
+### load libs
+```{r}
+library(tcltk)
+library(tkrplot)
+library(onemap)  
+library(tidyverse) # R for data science,  
+library("qtl") 
+```
+
+### format data for one map 
+```{r}
+maternal_geno <- read.csv("~/Desktop/Benny/Potato_QTLs/data/maternal_geno.csv")
+maternal_geno %>% head()
+colnames(maternal_geno) %>% class()
+
+maternal_geno.2 <- 
+maternal_geno %>% 
+  dplyr::select(-Nr, -Segregation, -Phase, -Classification) 
+
+dim(maternal_geno.2) # 425 181 
+maternal_geno.2 <- maternal_geno.2[2:425,]
+dim(maternal_geno.2) # 424 181 
+
+colnames(maternal_geno.2) <- gsub("X", "G", colnames(maternal_geno.2))
+dim(maternal_geno.2) # 424 markers, 180 lines 
+
+maternal_geno.2 <- as.data.frame(sapply(maternal_geno.2, function(x) gsub("ll", "a", x)))
+maternal_geno.2 <- as.data.frame(sapply(maternal_geno.2, function(x) gsub("lm", "ab", x)))
+maternal_geno.2 <- as.data.frame(sapply(maternal_geno.2, function(x) gsub("--", "-", x))) 
+```
+
+### check missing rate & remove data with missing rate above ... 
+```{r}
+maternal_geno.2_with_missing_rate <- 
+maternal_geno.2 %>% 
+  mutate(missing_rate = round(apply(maternal_geno.2, 1, function(x) sum(is.na(x)/180))), 2) ### "-" is missing data 
+
+hist(maternal_geno.2_with_missing_rate$missing_rate)  
+max(maternal_geno.2_with_missing_rate$missing_rate) # 0 
+```
+
+### format data for onemap
+```{r} 
+maternal_geno.2.sub1 <- data.frame(V1 = paste("*M", seq_along(1:nrow(maternal_geno.2)), sep = ""),
+                                   V2 = maternal_geno.2$Locus)
+maternal_geno.2.sub1
+
+maternal_geno.2.sub2 <- maternal_geno.2 %>% 
+  dplyr::select(-Locus)
+
+maternal_geno.2.sub2 %>% head()
+
+write.table(maternal_geno.2.sub2, file = "~/Desktop/Benny/Potato_QTLs/data/maternal_geno.2.sub2.txt")
+write.table(maternal_geno.2.sub1, file = "~/Desktop/Benny/Potato_QTLs/data/maternal_geno.2.sub1.txt")
+
+
+# change file format in linux 
+# cat maternal_geno.2.sub2.txt | sed 's/"//g' | awk '{first = $1; $1 = ""; print $0}' | sed 's/ /,/g' | sed 's/^[,]*//' | tail -424 > tmp.1  
+
+# cat maternal_geno.2.sub1.txt | tail -424 | sed 's/"//g' | awk '{print $2, $3}' > marker_infor_reform 
+# paste marker_infor_reform tmp.1 > maternal_geno_for_onemap.txt  
+# using vim to edit header: add 
+"# data type F2 backcross
+## 180 424 0"  
+```
+
+### build the map 
+```{r}
+maternal_geno.data <- read.mapmaker(file="~/Desktop/Benny/Potato_QTLs/data/maternal_geno_for_onemap.txt")
+# estimate two point rf 
+twopts.f2.LOD3_rf0.5 <- rf.2pts() 
+
+```
+
+### refine map in r/qtl 
+```{r}
+
+```
+
