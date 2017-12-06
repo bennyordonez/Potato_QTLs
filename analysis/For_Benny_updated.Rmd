@@ -1,0 +1,498 @@
+---
+title: "For_Benny"
+author: "Ruijuan Li"
+date: "11/28/2017"
+output: html_document
+---
+
+### import lib
+```{r}
+library(tidyverse)
+library(qtl)
+```
+
+### load geno data 
+```{r}
+## Maternal 
+load("~/Documents/backupCIP/QTLs/Potato_QTLs/BennyOnlyMatchM.Rdata") 
+
+BennyOnlyMatchM %>% dim()  # 348 196
+class(BennyOnlyMatchM)
+# View(BennyOnlyMatchM)
+
+# Format Maternal genotypic data 
+colnames(BennyOnlyMatchM)
+BennyOnlyMatchM.1 <- 
+BennyOnlyMatchM %>% 
+  mutate(id = Locus_ID) %>% 
+  dplyr::select(id, LG, GM_POS, G1:G180) 
+
+colnames(BennyOnlyMatchM.1) 
+
+# keep LG 1-12
+BennyOnlyMatchM.2 <- BennyOnlyMatchM.1[BennyOnlyMatchM.1$LG != "13",]
+sum(BennyOnlyMatchM.1$LG == 13)
+dim(BennyOnlyMatchM.2) # 346 183 
+BennyOnlyMatchM.2[1:10, 1:10]
+
+# modify geno file again to make it same have the same format as the sample data from r/qtl 
+BennyOnlyMatchM.2 <- as.data.frame(t(BennyOnlyMatchM.2)) 
+# http://www.rqtl.org/sampledata/listeria_gen.csv make sure your file looks the same as the file shows here 
+write.csv(BennyOnlyMatchM.2, file = "~/Documents/backupCIP/QTLs/Potato_QTLs/data/BennyOnlyMatchM.2.csv")
+
+# paternal 
+load("~/Documents/backupCIP/QTLs/Potato_QTLs/BennyOnlyMatchP.Rdata")
+
+BennyOnlyMatchP %>% dim()  # 317 196
+class(BennyOnlyMatchP)
+
+# Format Paternal genotypic data 
+colnames(BennyOnlyMatchP)
+BennyOnlyMatchP.1 <- 
+BennyOnlyMatchP %>% 
+  mutate(id = Locus_ID) %>% 
+  dplyr::select(id, LG, GM_POS, G1:G180) 
+
+# keep only LG 1-12
+BennyOnlyMatchP.2 <- BennyOnlyMatchP.1[BennyOnlyMatchP.1$LG != "13",]
+
+# modify geno file again to make it same have the same format as the sample data from r/qtl 
+BennyOnlyMatchP.2 <- as.data.frame(t(BennyOnlyMatchP.2)) 
+# http://www.rqtl.org/sampledata/listeria_gen.csv make sure your file looks the same as the file shows here 
+
+write.csv(BennyOnlyMatchP.2, file = "~/Documents/backupCIP/QTLs/Potato_QTLs/data/BennyOnlyMatchP.2.csv") 
+# modify the colname manually remove LG and GM_POS from the file 
+# Do not re-run the above code, just use the save object !!! 
+```
+
+### Load pheno data and reformat 
+```{r}
+pheno.Benny <- read.csv("~/Documents/backupCIP/QTLs/Potato_QTLs/data/Total_phenotypicData-RBs.csv")
+pheno.Benny %>% head()
+
+pheno.Benny$id <- paste("G", pheno.Benny$Individual, sep = "")
+
+pheno.Benny.2 <- 
+pheno.Benny %>% 
+  dplyr::select(-(CIP.NUMBER:Individual)) %>% 
+  t() %>% 
+  as.data.frame()
+
+# modify geno file again to make it same have the same format as the sample data from r/qtl 
+pheno.Benny.2 <- as.data.frame(t(pheno.Benny.2)) 
+# http://www.rqtl.org/sampledata/listeria_phe.csv make sure your file looks the same as the file shows here 
+
+write.csv(pheno.Benny.2, "~/Documents/backupCIP/QTLs/Potato_QTLs/data/pheno.Benny.2.csv", row.names = FALSE) 
+```
+
+# Start mapping 
+```{r}
+
+# Maternal Version
+LG.Benny.M <- read.cross(format = "csvsr", dir = "~/Documents/backupCIP/QTLs/Potato_QTLs/data", genfile = "BennyOnlyMatchM.2.csv", phefile = "pheno.Benny.2.csv", genotypes = c("ll", "lm"), na.strings = c("--"), BC.gen = 1) 
+
+LG.Benny.M <- jittermap(LG.Benny.M) 
+LG.Benny.M$pheno %>% dim() # 184 13 
+
+# takes about a minute to estimate the map
+summary(LG.Benny.M) 
+summaryMap(LG.Benny.M)
+plotMap(LG.Benny.M) 
+plot.rf(LG.Benny.M) 
+
+# Paternal Version
+LG.Benny.P <- read.cross(format = "csvsr", dir = "~/Documents/backupCIP/QTLs/Potato_QTLs/data", genfile = "BennyOnlyMatchP.2.csv", phefile = "pheno.Benny.2.csv", genotypes = c("nn", "np"), na.strings = c("--"), BC.gen = 1) 
+
+LG.Benny.P <- jittermap(LG.Benny.P) 
+LG.Benny.P$pheno %>% dim() # 184 13 
+LG.Benny.P$geno$`13`$data %>% dim() # 50 markers 
+
+# takes ~1 min to estimate the Map
+summary(LG.Benny.P) 
+summaryMap(LG.Benny.P) 
+plotMap(LG.Benny.P) 
+plot.rf(LG.Benny.P)     
+save(LG.Benny.P, file = "~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/LG.Benny.P.Rdata")
+save(LG.Benny.M, file = "~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/LG.Benny.M.Rdata")
+```
+
+### Scanone on all traits 
+```{r}
+# To see where are you
+
+getwd()
+
+#Load libraries
+library(qtl)
+library(tidyverse)
+
+#load my files
+load("~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/LG.Benny.P.Rdata")
+load("~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/LG.Benny.M.Rdata")
+
+#I am following 'CSHL_QTL.R'file
+#let's try making a new map 
+newmapLG.Benny.P <- est.map(LG.Benny.P,verbose=T,error.prob=.01)
+newmapLG.Benny.M <- est.map(LG.Benny.M,verbose=T,error.prob=.01)
+
+#compare the old and new maps
+plot.map(newmapLG.Benny.P,LG.Benny.P)
+plot.map(newmapLG.Benny.M,LG.Benny.M)
+
+###Here we can see a comparison of both 
+
+plot(newmapLG.Benny.M, LG.Benny.M, col= c("red", "purple"))
+plot(newmapLG.Benny.P, LG.Benny.P, col= c("red", "purple"))
+
+#because we know the general linkage between markers we can look for possible genotyping errors.
+#calculate the probability of genotyping errors
+
+LG.Benny.P <- calc.errorlod(LG.Benny.P, error.prob=0.01)
+LG.Benny.M <- calc.errorlod(LG.Benny.M, error.prob=0.01)
+
+#look at a table of results
+top.errorlod(LG.Benny.P)
+top.errorlod(LG.Benny.M)
+
+#plot results
+plot.errorlod(LG.Benny.P) 
+plot.errorlod(LG.Benny.M)
+
+#this reveals two possible errors in individuals.
+#Read more about this!. Hoping that there isnt enough to worry about.
+#Do not need use a new map, just work with the first one
+
+#If a lot of errors were revealed then it would be worth rechecking
+  #the data
+
+#Check that I have my columns named correctly
+colnames(LG.Benny.M$pheno)
+colnames(LG.Benny.P$pheno)
+
+#Eliminate "v1"and "id" in both
+LG.Benny.M$pheno <- 
+LG.Benny.M$pheno %>% 
+  dplyr::select(-V1, -id) 
+
+LG.Benny.P$pheno <- 
+LG.Benny.P$pheno %>% 
+  dplyr::select(-V1, -id) 
+
+sapply(colnames(LG.Benny.M$pheno), function(x) class(LG.Benny.M$pheno[,x]))
+sapply(colnames(LG.Benny.P$pheno), function(x) class(LG.Benny.P$pheno[,x]))
+
+LG.Benny.M$pheno <- 
+as.data.frame(sapply(colnames(LG.Benny.M$pheno), function(x) as.numeric(as.character(LG.Benny.M$pheno[,x])))) 
+
+LG.Benny.P$pheno <- 
+as.data.frame(sapply(colnames(LG.Benny.P$pheno), function(x) as.numeric(as.character(LG.Benny.P$pheno[,x])))) 
+
+#Then, we calculate genotype probabilities at "virtual" loci between our real markers two different methods are used because the downstream mapping methods require different estimates here 
+
+LG.Benny.P <- sim.geno(LG.Benny.P,step=1,n.draws=32)
+LG.Benny.M <- sim.geno(LG.Benny.M,step=1,n.draws=32)
+#Uses imputation
+
+  #Creates n.draw number of populations where the missing genotypes are filled in based on recombination frequencies
+
+LG.Benny.P <- calc.genoprob(LG.Benny.P,step=1)
+LG.Benny.M <- calc.genoprob(LG.Benny.M,step=1)
+#just calculates the probabilities at different locations
+
+###Let's Map 
+
+#Start by doing a one dimensional scan on imputed genotypes
+
+#Run scanone with method ="em", "em" stands for interval mapping
+out.em.LG.Benny.M <- scanone(LG.Benny.M, pheno.col = 1:12, method = "em")
+out.em.LG.Benny.P <- scanone(LG.Benny.P, pheno.col = 1:12, method = "em")
+
+#Run scanone with method ="mr", "mr" stands for marker regresion
+out.mr.LG.Benny.M <- scanone(LG.Benny.M, pheno.col = 1:12, method = "mr")
+out.mr.LG.Benny.P <- scanone(LG.Benny.P, pheno.col = 1:12, method = "mr")
+
+# Let's pull out the single largest LOD score from each chromosome
+# Check for those having LOD > 3
+summary(out.mr.LG.Benny.M, threshold=3)
+summary(out.mr.LG.Benny.P, threshold=3)
+#seems that any of them have it. 
+
+#Function max.scanone may be used to pick out the single biggest LOD score, as follows. 
+max(out.mr.LG.Benny.M)
+max(out.mr.LG.Benny.P)
+max(out.em.LG.Benny.M)
+max(out.mr.LG.Benny.P)
+#maybe later
+
+#Permute the data to set a signficance threshold 
+#use method="imp" because "imp" is better for missing genotype data
+
+scanone.perm.LG.Benny.P <- scanone(LG.Benny.P, pheno.col = 1:12, method="imp",n.perm=1000) 
+scanone.perm.LG.Benny.M <- scanone(LG.Benny.M, pheno.col = 1:12, method="imp",n.perm=1000) 
+
+#Save file to be able to load them later
+save(scanone.perm.LG.Benny.P, file = "~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/scanone.perm.LG.Benny.P.Rdata")
+
+save(scanone.perm.LG.Benny.M, file = "~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/scanone.perm.LG.Benny.M.Rdata")
+ #takes about 2 hours each
+
+load("~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/scanone.perm.LG.Benny.P.Rdata")
+load("~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/scanone.perm.LG.Benny.M.Rdata")
+
+# Summary of our permutations
+summary(scanone.perm.LG.Benny.P)
+summary(scanone.perm.LG.Benny.M)
+
+perm95.LG.Benny.P <- summary(scanone.perm.LG.Benny.P)
+perm95.LG.Benny.M <- summary(scanone.perm.LG.Benny.M)
+#keep the 95th percentile for future use.
+#This corresponds to p <0.05
+
+#note method "em" = interval mapping; "mr" = marker regression
+#here we use method "imp" for multiple imputation.
+  #advantage of "imp" is better for missing genotype data
+  #disadvantage of "imp" is that it is slower.
+scanone.imp.LG.Benny.M <- scanone(LG.Benny.M, pheno.col=1:12, method="imp")
+plot(scanone.imp.LG.Benny.M[,c(1,2,14)], col = "purple",main="Scanone.imp.LG.Benny Maternal")
+abline(h=perm95.LG.Benny.M[1,1],lty=2:6) #add permutation threshold
+
+scanone.imp.LG.Benny.P <- scanone(LG.Benny.P, pheno.col=1:12, method="imp")
+plot(scanone.imp.LG.Benny.P[,c(1,2,14)], col="purple", main="Scanone.imp.LG.Benny Paternal")
+abline(h=perm95.LG.Benny.P[1,1],lty=2:6) #add permutation threshold
+
+```
+
+```{r}
+
+```
+
+### CIM on all traits 
+```{r}
+
+#Check where are you
+getwd()
+setwd("/Users/bordonez/Documents/BackupCIP/QTLs/Potato_QTLs/analysis")
+
+# load your libraries
+library(qtl)
+library(tidyverse)
+
+#Load your previous files
+load("~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/LG.Benny.P.Rdata")
+load("~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/LG.Benny.M.Rdata")
+
+#cim
+#First assign according the data 
+colnames(LG.Benny.M$pheno)
+
+cim.LG.Benny.M <- 
+lapply(seq_along(1: ncol(LG.Benny.M$pheno)), function(trait) {
+  print(trait)
+  LG.Benny.M$pheno <- as.data.frame(LG.Benny.M$pheno[,trait])
+  cim(LG.Benny.M, n.marcovar=5,method="imp")
+}) 
+
+
+colnames(LG.Benny.P$pheno)
+cim.LG.Benny.P <- 
+lapply(seq_along(1: ncol(LG.Benny.P$pheno)), function(trait) {
+  print(trait)
+  LG.Benny.P$pheno <- as.data.frame(LG.Benny.P$pheno[,trait])
+  cim(LG.Benny.P, n.marcovar=5,method="imp")
+}) 
+
+
+#the n.marcovar= argument defines the maximum number of marker covariates to use.
+
+cim.LG.Benny.M.20 <- lapply(seq_along(1: ncol(LG.Benny.M$pheno)), function(trait) {
+  print(trait)
+  LG.Benny.M$pheno <- as.data.frame(LG.Benny.M$pheno[,trait])
+  cim(LG.Benny.M,n.marcovar=5,window=20,method="imp", error.prob = 0.001)
+}) 
+
+cim.LG.Benny.M.40 <- lapply(seq_along(1: ncol(LG.Benny.M$pheno)), function(trait) {
+  print(trait)
+  LG.Benny.M$pheno <- as.data.frame(LG.Benny.M$pheno[,trait])
+  cim(LG.Benny.M,n.marcovar=5,window=40,method="imp", error.prob = 0.001)
+}) 
+
+cim.LG.Benny.M.Inf <- lapply(seq_along(1: ncol(LG.Benny.M$pheno)), function(trait) {
+  print(trait)
+  LG.Benny.M$pheno <- as.data.frame(LG.Benny.M$pheno[,trait])
+  cim(LG.Benny.M,n.marcovar=5,window=Inf,method="imp", error.prob = 0.001)
+}) 
+
+
+cim.LG.Benny.P.20 <- 
+lapply(seq_along(1: ncol(LG.Benny.P$pheno)), function(trait) {
+  print(trait)
+  LG.Benny.P$pheno <- as.data.frame(LG.Benny.P$pheno[,trait])
+  cim(LG.Benny.P,n.marcovar=5,window=20,method="imp", error.prob = 0.001)
+}) 
+
+
+cim.LG.Benny.P.40 <- 
+lapply(seq_along(1: ncol(LG.Benny.P$pheno)), function(trait) {
+  print(trait)
+  LG.Benny.P$pheno <- as.data.frame(LG.Benny.P$pheno[,trait])
+  cim(LG.Benny.P,n.marcovar=5,window=40,method="imp", error.prob = 0.001)
+}) 
+
+cim.LG.Benny.P.Inf <- 
+lapply(seq_along(1: ncol(LG.Benny.P$pheno)), function(trait) {
+  print(trait)
+  LG.Benny.P$pheno <- as.data.frame(LG.Benny.P$pheno[,trait])
+  cim(LG.Benny.P,n.marcovar=5,window=Inf,method="imp", error.prob = 0.001)
+}) 
+
+
+#Summary of cim
+summary(cim.LG.Benny.M[[1]])
+summary(cim.LG.Benny.P[[1]])
+
+#Check the maximun LOD score
+max(cim.LG.Benny.M[[1]][,3]) #2.69
+max(cim.LG.Benny.P[[1]][,3]) #2.82
+
+max(cim.LG.Benny.M.20[[1]][,3]) #1.66
+max(cim.LG.Benny.P.20[[1]][,3]) #2.65
+max(cim.LG.Benny.M.40[[1]][,3]) #1.76
+max(cim.LG.Benny.P.40[[1]][,3]) #3.29
+max(cim.LG.Benny.M.Inf[[1]][,3]) #1.69
+max(cim.LG.Benny.P.Inf[[1]][,3]) #2.08
+
+
+##Plot out cim results
+plot(cim.LG.Benny.P[[1]], ylab="LOD score", col = "blue", main="cim LG. Paternal Map")
+add.cim.covar(cim.LG.Benny.P[[1]], col="red") # add dots indicating the locations of the selected marker covariates.
+abline(h=max(cim.LG.Benny.P[[1]][,3]),lty=2:6) #add permutation threshold
+
+plot(cim.LG.Benny.M[[1]], ylab="LOD score", col = "blue", main="cim LG. Maternal Map") 
+add.cim.covar(cim.LG.Benny.M[[1]], col="red") #add dots indicating the locations of the selected marker covariates.
+abline(h=max(cim.LG.Benny.M[[1]][,3]),lty=2:6) #add permutation threshold
+
+
+##Plot out Paternal Map results with every window, along with the LOD scores obtained by cim
+par(mfrow=c(3,1))
+plot(cim.LG.Benny.P[[1]],cim.LG.Benny.P.20[[1]], ylab="LOD score", col= c("green","blue"), main="Paternal Map, window = 20 cM")
+add.cim.covar(cim.LG.Benny.P.20[[1]], chr =chr, col="red")
+abline(h=max(cim.LG.Benny.P[[1]][,3]),lty=2:6)
+plot(cim.LG.Benny.P[[1]],cim.LG.Benny.P.40[[1]], ylab="LOD score", col= c("green","blue"), main="Paternal Map, window = 40 cM")
+add.cim.covar(cim.LG.Benny.P.40[[1]], chr =chr, col="red")
+abline(h=max(cim.LG.Benny.P[[1]][,3]),lty=2:6)
+plot(cim.LG.Benny.P[[1]],cim.LG.Benny.P.Inf[[1]], ylab="LOD score", col= c("green","blue"), main="Paternal Map, window = Inf cM")
+add.cim.covar(cim.LG.Benny.P.Inf[[1]], col="red")
+abline(h=max(cim.LG.Benny.P[[1]][,3]),lty=2:6)
+dev.off()
+
+##Plot out Maternal Map results with every window, along with the LOD scores obtained by cim
+par(mfrow=c(3,1))
+plot(cim.LG.Benny.M[[1]],cim.LG.Benny.M.20[[1]], ylab="LOD score", col= c("green","blue"), main="Maternal Map, window = 20 cM")
+add.cim.covar(cim.LG.Benny.M.20[[1]], col="red")
+abline(h=max(cim.LG.Benny.M[[1]][,3]),lty=2:6)
+plot(cim.LG.Benny.M[[1]],cim.LG.Benny.M.40[[1]], ylab="LOD score", col= c("green","blue"), main="Maternal Map, window = 40 cM")
+add.cim.covar(cim.LG.Benny.M.40[[1]], col="red")
+abline(h=max(cim.LG.Benny.M[[1]][,3]),lty=2:6)
+plot(cim.LG.Benny.M[[1]],cim.LG.Benny.M.Inf[[1]], ylab="LOD score", col= c("green","blue"), main="Maternal Map, window = Inf cM")
+add.cim.covar(cim.LG.Benny.M.Inf[[1]], col="red")
+abline(h=max(cim.LG.Benny.M[[1]][,3]),lty=2:6)
+dev.off()
+
+#Run cim n.permutations = 1000. Run for each trait
+cim.perm.LG.Benny.P <- cim(LG.Benny.P,n.marcovar=5,method="imp",n.perm=1000)
+
+save(cim.perm.LG.Benny.P, file = "~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/cim.perm.LG.Benny.P")
+
+cim.perm.LG.Benny.M <- cim(LG.Benny.M,n.marcovar=5,method="imp",n.perm=1000)
+#will take time ~10 min each. 
+
+save(cim.perm.LG.Benny.M, file = "~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/cim.perm.LG.Benny.M")
+
+#Summary, shows the 90th and 95th percentile of LOD scores in randomized data
+summary(cim.perm.LG.Benny.P) #5%: 3.85; 10% 3.33
+summary(cim.perm.LG.Benny.M) #5%: 4.32; 10% 3.71
+
+#Keep the 95th percentile for future use. This corresponds to p <0.05
+cim.perm95.LG.Benny.P <- summary(cim.perm.LG.Benny.P)[1] #3.90
+cim.perm95.LG.Benny.M <- summary(cim.perm.LG.Benny.M)[1] #4.10
+
+#Plot out results
+plot(cim.LG.Benny.P[[1]],ylab="LOD score", main="cim.perm.LG.Paternal Map")
+abline(h=cim.perm95.LG.Benny.P,lty=2:6) #add permutation threshold 
+
+plot(cim.LG.Benny.M[[1]],ylab="LOD score", main="cim.perm. LG.Maternal Map")
+abline(h=cim.perm95.LG.Benny.M,lty=2:6) #add permutation threshold 
+
+
+#Save correctly
+save(LG.Benny.P, file = "~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/LG.Benny.P.Rdata")
+save(LG.Benny.M, file = "~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/LG.Benny.M.Rdata")
+```
+##A 2D scan
+#The above methods only evaluate the evidence for a QTL one location a time. 
+#It is possible to instead scan two locations at once. 
+#This can be particularly advantageous in identifying QTL if there is epistasis.
+```{r}
+#Load my files
+
+load("~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/LG.Benny.P.Rdata")
+load("~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/LG.Benny.M.Rdata")
+
+scantwo.imp.LG.Benny.P <- scantwo(LG.Benny.P,method="imp",verbose=T) 
+scantwo.imp.LG.Benny.M <- scantwo(LG.Benny.M,method="imp",verbose=T) 
+#takes 30 minutes each
+
+save(scantwo.imp.LG.Benny.P, file = "~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/scantwo.imp.LG.Benny.P.Rdata")
+save(scantwo.imp.LG.Benny.M, file = "~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/scantwo.imp.LG.Benny.M.Rdata")
+
+#Load data
+load("~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/scantwo.imp.LG.Benny.P.Rdata")
+load("~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/scantwo.imp.LG.Benny.M.Rdata")
+
+
+#Let's see the graphic to have an idea 
+plot(scantwo.imp.LG.Benny.M, chr = 1:12, main = "LG.Maternal Map")
+plot(scantwo.imp.LG.Benny.P, chr = 1:12, main = "LG.Paternal Map")
+
+#permutations take a long time, about 2 hours for 1000? 
+#scantwo.imp.perm.LG.Benny.P <- scantwo(LG.Benny.P,method="imp",verbose=T,n.perm=1000) 
+#save(scantwo.imp.perm.LG.Benny.P,file = "~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/scantwo.imp.perm.LG.Benny.P.Rdata")
+
+#scantwo.imp.perm.LG.Benny.M <- scantwo(LG.Benny.M,method="imp",verbose=T,n.perm=1000) 
+#save(scantwo.imp.perm.LG.Benny.M, file = "~/Documents/backupCIP/QTLs/Potato_QTLs/analysis/scantwo.imp.perm.LG.Benny.M.Rdata")
+
+#load the pre-run permutations
+#load("scantwo.imp.perm.LG.Benny.P.Rdata")
+#load("scantwo.imp.perm.LG.Benny.M.Rdata")
+
+#summary(scantwo.imp.perm.LG.Benny.P)
+#summary(scantwo.imp.perm.LG.Benny.M)
+
+#plot(scantwo.imp.perm.LG.Benny.M)
+#plot(scantwo.imp.perm.LG.Benny.P)
+
+#There are many different models being considered in the 2D models.  
+#The LOD scores reflect the following comparisons
+#columns:
+  #full 2 QTL w/ interaction vs. null model
+  #fv1 2 QTL w/ interaction vs 1 QTL
+  #int 2 QTL w/interaction vs 2 QTL additive. (test for interaction)
+  #add 2 QTL additive vs null model
+  #av1 2 QTL additive vs 1 QTL (test for 2nd QTL if additive)
+  #one 1 QTL model vs null
+
+#summary(scantwo.imp.LG.Benny.M,perm.M=scantwo.imp.perm.LG.Benny.M,pvalues=T)
+
+#plot(scantwo.imp.LG.Benny.M,zscale=T) 
+      #upper compares model for 2 QTL with interaction to 2 QTL additive
+          #(evidence for interaction); corresponds to "int" above
+      #lower compares 2 QTL interaction with no QTL 
+          #(evidence for QTL); corresponds to "full" above
+
+```
+
+```{r}
+
+```
+
+
